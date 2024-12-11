@@ -1,0 +1,74 @@
+_schema-version: "3.2"
+ID: Employee
+version: 0.0.1
+modules:
+  - name: Employee-srv
+    type: nodejs
+    path: gen/srv
+    requires:
+      - name: Employee-db
+  - name: Employee-db-deployer
+    type: hdb
+    path: gen/db
+    requires:
+      - name: Employee-db
+    parameters:
+      buildpack: nodejs_buildpack
+  - name: Employee-app-deployer
+    type: com.sap.application.content
+    path: gen
+    requires:
+      - name: Employee-html5-repo-host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: app/
+      requires:
+        - artifacts:
+            - comappemployee.zip
+          name: comappemployee
+          target-path: app//
+  - name: comappemployee
+    type: html5
+    path: app/employee
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build:cf
+        - npm ci
+        - npm run build
+      supported-platforms:
+        []
+resources:
+  - name: Employee-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+  - name: Employee-html5-repo-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+  - name: Employee-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      config:
+        HTML5Runtime_enabled: false
+        init_data:
+          instance:
+            destinations:
+              - Authentication: NoAuthentication
+                Name: ui5
+                ProxyType: Internet
+                Type: HTTP
+                URL: https://ui5.sap.com
+            existing_destinations_policy: update
+        version: 1.0.0
+      service: destination
+      service-name: Employee-destination-service
+      service-plan: lite
+parameters:
+  deploy_mode: html5-repo
